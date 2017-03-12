@@ -1,0 +1,97 @@
+---
+title: "Untitled"
+author: "Ken Gu"
+date: "2017年3月12日"
+output: html_document
+---
+The goal of this report is to predicting manner(class) based on the other variables
+First: Model build strategy (how I built my model)
+1.1 to select  Classification Trees/ bagging / s latent Dirichlet allocation (LDA) models
+1.2 Before execute the prediction function, I use dplyr to read/clean the data
+
+Second: (how I used cross validation)
+2.1 Split the training set to 'train' and 'testing' set based on 70% and 30% 
+
+Third: (what you think the expected out of sample error)
+3.1 I use all 3 models to predict on the testing set to get the accuracy result
+
+Fourth: (why I make choice on selection model)
+4.1 I select the model with the highest accuracy on the testing test.
+
+
+```{r, echo=FALSE}
+library(dplyr)
+library(caret)
+library(kernlab)
+library(ipred)
+
+```
+
+
+
+```{r, echo=FALSE}
+# Step 1; read and clean data
+datatrainfile <- "./pml-training.csv"
+datatrainpml <- read.csv (datatrainfile)
+datatestfile <- "./pml-testing.csv"
+datatestpml <- read.csv (datatestfile)
+# Step 1.1: Clean data
+# to select only gyros,accel,magnet, and classe observations
+
+datagyrostrain <- dplyr::select (datatrainpml, contains("gyros_"))
+dataacceltrain <- dplyr::select (datatrainpml, contains("accel"))
+dataacceltrain <- dplyr::select (dataacceltrain, -contains("total"))
+dataacceltrain <- dplyr::select (dataacceltrain, -contains("var"))
+datamagnettrain <- dplyr::select (datatrainpml, contains("magnet"))
+datamagnettrain <- dplyr::select (datamagnettrain, -contains("total"))
+datamagnettrain <- dplyr::select (datamagnettrain, -contains("var"))
+dataclasstrain <- dplyr::select (datatrainpml, contains("classe"))
+datacleantrain <- cbind(datagyrostrain, dataacceltrain, datamagnettrain, dataclasstrain)
+
+datagyrotest <- dplyr::select (datatestpml, contains("gyros_"))
+dataacceltest <- dplyr::select (datatestpml, contains("accel"))
+dataacceltest <- dplyr::select (dataacceltest, -contains("total"))
+dataacceltest <- dplyr::select (dataacceltest, -contains("var"))
+datamagnettest <- dplyr::select (datatestpml, contains("magnet"))
+datamagnettest <- dplyr::select (datamagnettest, -contains("total"))
+datamagnettest <- dplyr::select (datamagnettest, -contains("var"))
+dataclasstest <- dplyr::select (datatestpml, contains("classe"))
+datacleantest <- cbind(datagyrotest, dataacceltest, datamagnettest, dataclasstest)
+
+
+# Step 2: Split the data to training set/ testing set inside the training data
+inTrain <- createDataPartition(y=datacleantrain$classe, p=0.7, list=FALSE)
+training <- datacleantrain[inTrain,]
+testing <- datacleantrain[-inTrain,]
+
+# Step 3: Train All models
+modelFit1 <- train(classe ~ . , data=training, method='rpart')
+modelFit2 <- train(classe ~ . , data=training, method='treebag')
+modelFit3 <- train(classe ~ ., data=training, method='lda')
+
+# Step 4: Get the accuracy result for above 3 models
+# predict 
+pred1 <- predict(modelFit1, testing)
+pred2 <- predict(modelFit2, testing)
+pred3 <- predict(modelFit3, testing)
+
+ac1 <- c(pred1==testing$classe)
+ac2 <- c(pred2==testing$classe)
+ac3 <- c(pred3==testing$classe)
+
+confusionMatrix(pred1, testing$classe)
+confusionMatrix(pred2, testing$classe)
+confusionMatrix(pred3, testing$classe)
+
+```
+
+```
+# After comparision, select model 2, as it has the highest accuracy
+
+# Step 5: Predict 20 different test cases
+
+```{r}
+predFinal <- predict(modelFit2, datacleantest)
+```
+
+
